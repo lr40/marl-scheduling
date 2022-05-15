@@ -1,24 +1,38 @@
+import os
 import pickle
+import pprint
 import statistics
 import sys
 import time
-from contextlib import redirect_stdout
+from fractions import Fraction as F
 from itertools import count
+from typing import Any, Dict
 
 import numpy as np
 import torch
 
-from Plot import *
-from PPOmodules import *
-from SchedulingEnvironment import *
-from world import *
+from SchedulingEnvironment import (
+    GloballySharedParamsDividedFixedPriceEnv,
+    HardcodedFixPriceEnvironment,
+    LocallySharedParamsDividedFixedPriceEnv,
+    PPOAggregatedFixPriceEnv,
+    PPODividedFixedPriceEnv,
+    PPODividedFreePriceEnv,
+    PPOFullyAggregatedFixPriceEnv,
+)
+from world import World
+
+# from Plot import *
+# from PPOmodules import *
+# from SchedulingEnvironment import *
+# from world import *
 
 sys.stdout = sys.__stdout__
 original_stdout = sys.stdout
 
 # Setup of this run
 PLOTTING = False
-fileName = "data/Test1/data{}.pkl"
+fileName = "data{}.pkl"
 plotName = "PPO Training"
 plotPath = path = "C:\\Users\\lenna\\Desktop\\Ausgabe\\" + plotName + " {}.png"
 renderingFileName = "TrainingOutput.txt"
@@ -28,6 +42,7 @@ RENDERING = False
 
 
 # general settings parameters
+commercialFreePriceReward = False
 dividedAgents = False
 hardcodedAgents = False
 freePrices = False
@@ -38,7 +53,7 @@ globallySharedParameters = False  # if int(sys.argv[1])==1 else False
 
 
 # Parameters of the world
-num_episodes = 12000
+num_episodes = 10  # 12000
 episodeLength = 100
 numberOfAgents = 4
 numberOfCores = 4
@@ -116,12 +131,13 @@ RLparamsDict = {
     "CENTRALISATION_SAMPLE": CENTRALISATION_SAMPLE,
 }
 
+env = None
 
 if dividedAgents is True:
     if freePrices is False:
         env = PPODividedFixedPriceEnv(world, RLparamsDict)
     if freePrices is True:
-        env = PPODividedFreePriceEnv(world, RLparamsDict)
+        env = PPODividedFreePriceEnv(world, RLparamsDict, commercialFreePriceReward)
 
 if aggregatedAgents is True:
     env = PPOAggregatedFixPriceEnv(world, RLparamsDict)
@@ -138,8 +154,10 @@ if locallySharedParameters is True:
 if globallySharedParameters is True:
     env = GloballySharedParamsDividedFixedPriceEnv(world, RLparamsDict)
 
+if env is None:
+    raise Exception("No Env selected!")
 
-parameters = dict(world_params_dict, **RLparamsDict)
+parameters: Dict[str, Any] = dict(world_params_dict, **RLparamsDict)
 parameters["dividedAgents"] = dividedAgents
 parameters["hardcodedAgents"] = hardcodedAgents
 parameters["aggregatedAgents"] = aggregatedAgents
@@ -184,8 +202,8 @@ for i_episode in range(num_episodes):
             [[[0] for _ in range(collectionLength)] for _ in range(numberOfAgents)]
         )
         accumulatedPriceChooserReward = torch.tensor(
-            [[[0] for slot in range(collectionLength)] for agent in range(numberOfAgents)],
-            dtype=float,
+            [[[0] for _ in range(collectionLength)] for _ in range(numberOfAgents)],
+            dtype=torch.float64,
         )
         accumulatedAcceptorReward = torch.tensor(
             [[[0] for _ in range(numberOfCores)] for _ in range(numberOfAgents)]
@@ -242,7 +260,7 @@ for i_episode in range(num_episodes):
         collectedAcceptionAmounts.append(acceptionQuality[1])
 
         if RENDERING:
-            with open(renderingFileName, "a") as output2:
+            with open(renderingFileName, "a", encoding="utf8") as output2:
                 sys.stdout = output2
                 env.render()
                 pprint.pprint("offerNetRewards: {}".format(offerRewards.tolist()))
@@ -287,7 +305,7 @@ for i_episode in range(num_episodes):
             averageEpisodicAuctioneerReward.append(statistics.mean(collectedAuctioneerReward))
             averageEpisodicAcceptionQualities.append(
                 statistics.mean(collectedAcceptionQualities)
-                if (collectedAcceptionQualities != [])
+                if (collectedAcceptionQualities)
                 else None
             )
             averageEpisodicAcceptionAmounts.append(statistics.mean(collectedAcceptionAmounts))
