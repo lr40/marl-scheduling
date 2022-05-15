@@ -53,7 +53,7 @@ globallySharedParameters = False  # if int(sys.argv[1])==1 else False
 
 
 # Parameters of the world
-num_episodes = 10  # 12000
+num_episodes = 12000
 episodeLength = 100
 numberOfAgents = 4
 numberOfCores = 4
