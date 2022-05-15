@@ -4,9 +4,9 @@ import torch
 import numpy as np
 from itertools import count
 from PPOmodules import *
-from world import *
-from SchedulingEnvironment import *
-from Plot import *
+from env.world import *
+from env.SchedulingEnvironment import *
+import os
 from contextlib import redirect_stdout
 import sys, pickle
 

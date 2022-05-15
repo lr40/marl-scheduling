@@ -2,8 +2,8 @@ from random import Random
 from DQNmodules import *
 from PPOmodules import *
 from HardcodedModules import *
-from world import *
-import world as welt
+from env.world import *
+import env.world as welt
 import torch, torch.optim as optim
 import copy
 

@@ -1,4 +1,4 @@
-import random, math
+import random
 
 def calculateRewardRatio(priority,remainingLength):    #Kommt sowohl in Agent als auch Auctioneer vor. Refactoren in gemeinsame Oberklasse Spieler oder so. Da auch updateCores()- Methode rein
     if (priority==-1) | (remainingLength==-1):

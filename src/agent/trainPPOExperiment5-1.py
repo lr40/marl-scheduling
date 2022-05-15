@@ -4,11 +4,11 @@ import torch
 import numpy as np
 from itertools import count
 from PPOmodules import *
-from world import *
-from SchedulingEnvironment import *
-from Plot import *
+from env.world import *
+from env.SchedulingEnvironment import *
 from contextlib import redirect_stdout
 import sys, pickle
+import os
 from math import isclose
 
 sys.stdout = sys.__stdout__
