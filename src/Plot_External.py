@@ -1,10 +1,12 @@
-import pickle,Plot
+import pickle
 
-toPlot=[0,1,2,3,4,5,6,7,8,9] #
+import Plot
+
+toPlot = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  #
 plotScatterPlots = False
 plotSeparateRuns = False
 plotSeparateRunsWithManualLabels = False
-manualLabels = ['job type 0','_','job type 1','_','job type 2'] 
+manualLabels = ["job type 0", "_", "job type 1", "_", "job type 2"]
 plotAverageAndSD = False
 plot2AveragesAndSDs = False
 plotSeveralMetricsOfMultipleRuns = False
@@ -12,24 +14,24 @@ plotOneMetricOfMultipleRunsOfMultipleFolders = False
 plotSeveralJobMetricsOfMultipleRunsOfMultipleFolders = True
 ylabel = "Average price"
 value = "prices"
-values = ['0','1','2']
+values = ["0", "1", "2"]
 printInfo = False
-location = 'upper center'
+location = "upper center"
 jobKind = 0
-jobKinds = [0,1,2]  #
+jobKinds = [0, 1, 2]  #
 bottom = 0
 top = 8
 nCol = 3
-smooth= 20
-variable = None # 'hardcodedAgents'
+smooth = 20
+variable = None  # 'hardcodedAgents'
 if variable is not None:
     path = "C:/Users/lenna/Desktop/Experiment 5/nCommRew/4 Kerne/data/data{}.pkl"
 if variable is None:
-    path = 'C:/Users/lenna/Desktop/marl-scheduling/data neu/Experiment 1 mit Trading/2 Agenten/voll agg/data{}.pkl'#
+    path = "C:/Users/lenna/Desktop/marl-scheduling/data neu/Experiment 1 mit Trading/2 Agenten/voll agg/data{}.pkl"  #
 
-paths = ['C:/Users/lenna/Desktop/marl-scheduling/data neu/Experiment 5/3 Jobs/commRew/data{}.pkl']
+paths = ["C:/Users/lenna/Desktop/marl-scheduling/data neu/Experiment 5/3 Jobs/commRew/data{}.pkl"]
 
-'''
+"""
 'C:/Users/lenna/Desktop/marl-scheduling/data neu/Experiment 1 mit Trading/4 Agenten 12k e/divided/data{}.pkl',
         'C:/Users/lenna/Desktop/marl-scheduling/data neu/Experiment 1 mit Trading/4 Agenten 12k e/divided lok PS/data{}.pkl',
         'C:/Users/lenna/Desktop/marl-scheduling/data neu/Experiment 1 mit Trading/4 Agenten 12k e/halb agg/data{}.pkl'
@@ -69,14 +71,14 @@ paths = ['C:/Users/lenna/Desktop/marl-scheduling/data neu/Experiment 5/3 Jobs/co
         "C:/Users/lenna/Desktop/Experiment 2/4 Agenten/lokales PS/data/data{}.pkl",
         "C:/Users/lenna/Desktop/Experiment 1/2 Agenten/dezentral/data/data{}.pkl",
         'C:/Users/lenna/Desktop/Experiment 2/2 Agenten/globales PS/data/data{}.pkl'
-'''
+"""
 
 
 if plotScatterPlots is True:
     for i in toPlot:
         a_file = open(path.format(i), "rb")
         argsDict = pickle.load(a_file)
-        FREEPRICES = argsDict['params']['freePrices']
+        FREEPRICES = argsDict["params"]["freePrices"]
 
         if FREEPRICES:
             Plot.plotFreePricesResult(argsDict)
@@ -84,24 +86,34 @@ if plotScatterPlots is True:
             Plot.plotFixPricesResult(argsDict)
         a_file.close()
 
-if (plotScatterPlots is False)&(plotOneMetricOfMultipleRunsOfMultipleFolders is False)&(plotSeveralJobMetricsOfMultipleRunsOfMultipleFolders is False):
+if (
+    (plotScatterPlots is False)
+    & (plotOneMetricOfMultipleRunsOfMultipleFolders is False)
+    & (plotSeveralJobMetricsOfMultipleRunsOfMultipleFolders is False)
+):
     argsDicts = []
     for i in toPlot:
         a_file = open(path.format(i), "rb")
         argsDict = pickle.load(a_file)
         argsDicts.append(argsDict)
-    #if variable is not None:
-        #argsDicts.sort(key=lambda _: _['params'][variable])
+    # if variable is not None:
+    # argsDicts.sort(key=lambda _: _['params'][variable])
     if plotAverageAndSD is True:
-        Plot.plotAverageAndSDOfMultipleRuns(argsDicts,value,ylabel,variable,smooth)
+        Plot.plotAverageAndSDOfMultipleRuns(argsDicts, value, ylabel, variable, smooth)
     if plotSeparateRuns is True:
-        Plot.plotSeparateRuns(argsDicts,value,variable,smooth)
+        Plot.plotSeparateRuns(argsDicts, value, variable, smooth)
     if plotSeparateRunsWithManualLabels is True:
-        Plot.plotSeparateRunsWithManualLabels(argsDicts,values,ylabel,manualLabels,bottom,top,smooth,location,printInfo)
+        Plot.plotSeparateRunsWithManualLabels(
+            argsDicts, values, ylabel, manualLabels, bottom, top, smooth, location, printInfo
+        )
     if plot2AveragesAndSDs is True:
-        Plot.plotTwoPrioritiesAverageAndSDOfMultipleRuns(argsDicts,value,smooth,bottom,top,printInfo,location)
+        Plot.plotTwoPrioritiesAverageAndSDOfMultipleRuns(
+            argsDicts, value, smooth, bottom, top, printInfo, location
+        )
     if plotSeveralMetricsOfMultipleRuns is True:
-        Plot.plotSeveralMetricsOfMultipleRuns(argsDicts,values,ylabel,manualLabels,bottom,top,smooth,printInfo,location)
+        Plot.plotSeveralMetricsOfMultipleRuns(
+            argsDicts, values, ylabel, manualLabels, bottom, top, smooth, printInfo, location
+        )
 
 
 if plotOneMetricOfMultipleRunsOfMultipleFolders is True:
@@ -113,8 +125,19 @@ if plotOneMetricOfMultipleRunsOfMultipleFolders is True:
             argsDict = pickle.load(a_file)
             argsDicts.append(argsDict)
         listOfArgsDicts.append(argsDicts)
-    
-    Plot.plotOneMetricOfMultipleRunsOfMultipleFolders(listOfArgsDicts,value,ylabel,manualLabels,bottom,top,smooth,printInfo,location,jobKind)
+
+    Plot.plotOneMetricOfMultipleRunsOfMultipleFolders(
+        listOfArgsDicts,
+        value,
+        ylabel,
+        manualLabels,
+        bottom,
+        top,
+        smooth,
+        printInfo,
+        location,
+        jobKind,
+    )
 
 if plotSeveralJobMetricsOfMultipleRunsOfMultipleFolders is True:
     listOfArgsDicts = []
@@ -125,5 +148,17 @@ if plotSeveralJobMetricsOfMultipleRunsOfMultipleFolders is True:
             argsDict = pickle.load(a_file)
             argsDicts.append(argsDict)
         listOfArgsDicts.append(argsDicts)
-    
-    Plot.plotSeveralJobMetricsOfMultipleRunsOfMultipleFolders(listOfArgsDicts,value,ylabel,manualLabels,bottom,top,smooth,printInfo,location,jobKinds,nCol)
+
+    Plot.plotSeveralJobMetricsOfMultipleRunsOfMultipleFolders(
+        listOfArgsDicts,
+        value,
+        ylabel,
+        manualLabels,
+        bottom,
+        top,
+        smooth,
+        printInfo,
+        location,
+        jobKinds,
+        nCol,
+    )
