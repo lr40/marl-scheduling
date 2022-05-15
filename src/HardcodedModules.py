@@ -1,4 +1,4 @@
-import random
+import random, math
 
 def calculateRewardRatio(priority,remainingLength):    #Kommt sowohl in Agent als auch Auctioneer vor. Refactoren in gemeinsame Oberklasse Spieler oder so. Da auch updateCores()- Methode rein
     if (priority==-1) | (remainingLength==-1):
@@ -12,12 +12,12 @@ class HardcodedAcceptor(object):
     def __init__(self, world):
         self.amountInputChannels = (3 + (2*world.maxAmountOfOffersToOneAgent))
         self.numberOfActions = (world.maxAmountOfOffersToOneAgent + 1)
-        self.rejectIndex = (self.numberOfActions - 1)
+        self.rejectIndex = (self.numberOfActions - 1) #Array-Index-Logik
 
     def selectAction(self, observationTensor):
         observationList = observationTensor.tolist()
         assert len(observationList) == (self.amountInputChannels)
-        # If query refers to ownership flag
+        # untige If-Abfrage bezieht sich auf ownership-Flag
         if observationList[0] == 0:
             return self.rejectIndex
         else:
@@ -36,17 +36,17 @@ class HardcodedAuctioneerAcceptor(object):
     def __init__(self, world):
         self.amountInputChannels = (3 + (2*world.maxAmountOfOffersToOneAgent))
         self.numberOfActions = (world.maxAmountOfOffersToOneAgent + 1)
-        self.rejectIndex = (self.numberOfActions - 1)
+        self.rejectIndex = (self.numberOfActions - 1) #Array-Index-Logik
 
     def selectAction(self, observationTensor):
         observationList = observationTensor.tolist()
         assert len(observationList) == (self.amountInputChannels)
-        # If query refers to ownership flag
+        # untige If-Abfrage bezieht sich auf ownership-Flag
         if observationList[0] == 0:
             return self.rejectIndex
         else:
             ownRewardRatio = calculateRewardRatio(observationList[1],observationList[2])
-            assert (ownRewardRatio == -1) # Must be so, because it is the auctioneer.
+            assert (ownRewardRatio == -1) # Muss so sein, weil es ja der Auktionator ist.
             iterator1 = iter(observationList[3:])
             OfferTuples = zip(iterator1,iterator1)
             listOfOfferdRatios = [calculateRewardRatio(priority, necessaryTime) for (priority, necessaryTime) in OfferTuples]
@@ -60,9 +60,9 @@ class HardcodedAuctioneerAcceptor(object):
 class HardcodedOfferer(object):
     def __init__(self,world):
         self.amountInputChannels = ((world.numberOfCores * 2) + 2)
-        # Theoretically, it is possible not to submit an offer at all (rejectIndex). But this should only be relevant in rare borderline cases.
+        # Theoretisch besteht die Möglichkeit gar kein Angebot abzugeben (rejectIndex). Aber das dürfte nur in seltenen Grenzfällen relevant sein.
         self.numberOfActions = ((world.numberOfCores) + 1)
-        # In contrast to above, the CoreID is directly specified here for offers. Since the cores start at 1, 0 is the denial.
+        # Im Unterschied zu oben wird hier bei Angeboten direkt die CoreID angegeben. Da die Kerne bei 1 beginnen, ist 0 die Verweigerung.
         self.rejectIndex = 0
     
     def selectAction(self, observationTensor):
@@ -74,6 +74,6 @@ class HardcodedOfferer(object):
         CoreStateTuples = zip(iterator2,iterator2)
         listOfCoreRatios = [calculateRewardRatio(priority, remainingLength) for (priority, remainingLength) in CoreStateTuples]
         offerCandidates = [(i, rewardRatio) for (i, rewardRatio) in enumerate(listOfCoreRatios) if (rewardRatio == min(listOfCoreRatios))]
-        finalOfferCoreID = random.sample(offerCandidates,1)[0][0]   #There is no need to add 1, because this is already done in world.py
+        finalOfferCoreID = random.sample(offerCandidates,1)[0][0]   #Es muss nicht 1 hinzuaddiert werden, weil das schon in world.py geschieht
 
         return finalOfferCoreID

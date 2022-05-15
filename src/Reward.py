@@ -39,10 +39,10 @@ def getDividedFreePricesReward(env,commercialFreePriceReward):
             
             negotiatedRewardRatio = entry.offeredReward / entry.necessaryTime
             tradedReward = round(negotiatedRewardRatio * timeMeasure)
-
+            #Die untere Zeile war leider auskommentiert
             acceptorNetRewards[entry.offererID - 1][core.coreID - 1] -= tradedReward
             agentReward[entry.offererID - 1] -= tradedReward
-        
+            # Auktionator sollte unbedingt noch mit eingebaut werden!
             if (entry.recipientID > 0):
                 acceptorNetRewards[entry.recipientID - 1][core.coreID - 1] +=  tradedReward
                 agentReward[entry.recipientID - 1] += tradedReward
@@ -65,7 +65,7 @@ def getAggregatedFixedPricesReward(env):
         # set the Reward for the offerNet
         offerRewards[aggregatedAgentID - 1][0] += reward
     
-    #Safe copy needed to iterate as we remove elements.
+    #Sichere Kopie zum Iterieren nötig, da wir Elemente entfernen.
     safeCopy = copy.deepcopy(env.world.acceptedOfferRatios)
     for i, agentEntry in enumerate(safeCopy):
         for j, acceptorEntry in enumerate(agentEntry):
@@ -94,10 +94,10 @@ def getAggregatedFixedPricesReward(env):
             
             negotiatedRewardRatio = entry.offeredReward / entry.necessaryTime
             tradedReward = round(negotiatedRewardRatio * timeMeasure)
-            
+            #Die untere Zeile war leider auskommentiert.
             acceptorRewards[entry.offererID - 1] -= tradedReward
             agentReward[entry.offererID - 1] -= tradedReward
-            
+            # Auktionator sollte unbedingt noch mit eingebaut werden!
             if (entry.recipientID > 0):
                 agentReward[entry.recipientID - 1] += tradedReward
             if (entry.recipientID == 0):
@@ -108,7 +108,11 @@ def getAggregatedFixedPricesReward(env):
     return offerRewards, acceptorRewards, auctioneerReward, agentReward
 
 def getDividedFixedPricesReward(env):
-
+    '''
+    Der Reward soll für die Akzeptoren zuverlässiger erfolgen und nicht mehr den Wirren der Handlungen nachfolgender Akzeptoren unterworfen sein.
+    Denn die unterschiedlich langen Reward-Chains können eine Ursache für ein störhaftes Reward-Signal sein.
+    Reward entsteht also entweder durch Abarbeitung eines eigenen Jobs oder durch Annahme eines Angebots und Abwarten der Zeitspanne.
+    '''
     acceptorNetRewards = np.array([[[0] for core in range(env.world.numberOfCores)] for agent in range(env.world.numberOfAgents)])
     offerNetRewards = np.array([[[0] for slot in range(env.world.collectionLength)] for agent in range(env.world.numberOfAgents)])
     for offer in env.world.acceptedOffers:
@@ -119,7 +123,7 @@ def getDividedFixedPricesReward(env):
         slotID = offer.queuePosition
         offerNetRewards[dividedAgentID - 1][slotID] = reward
     
-    #Safe copy needed to iterate as we remove elements.
+    #Sichere Kopie zum Iterieren nötig, da wir Elemente entfernen.
     safeCopy = copy.deepcopy(env.world.acceptedOfferRatios)
     for i, agentEntry in enumerate(safeCopy):
         for j, acceptorEntry in enumerate(agentEntry):
@@ -137,7 +141,7 @@ def getDividedFixedPricesReward(env):
     for core, ownerID, jobID, generatedReward, timeStamp in env.world.jobTerminationInfo:
         # Process rewardchains for each core             
         rewardChainList = env.world.liabilityList[core.coreID - 1]
-        # Here, absolute assignment is justified because a split acceptor can only finish one job per round.
+        # Hier ist das absolute Gleichsetzen gerechtfertigt, weil ein aufgeteilter Akzeptor nur einen Job je Runde beenden kann.
         acceptorNetRewards[ownerID - 1][core.coreID - 1] = generatedReward
         agentReward[ownerID - 1] += generatedReward
         env.terminationRevenues += generatedReward

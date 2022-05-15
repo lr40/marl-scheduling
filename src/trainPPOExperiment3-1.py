@@ -4,9 +4,9 @@ import torch
 import numpy as np
 from itertools import count
 from PPOmodules import *
-from env.world import *
-from env.SchedulingEnvironment import *
-import os
+from world import *
+from SchedulingEnvironment import *
+from Plot import *
 from contextlib import redirect_stdout
 import sys, pickle
 sys.stdout = sys.__stdout__
@@ -16,7 +16,7 @@ original_stdout = sys.stdout
 PLOTTING = False
 fileName = "data/Experiment 3/dezentral/data{}.pkl"
 plotName = 'PPO Training'
-plotPath = path = ''
+plotPath = path = 'C:\\Users\\lenna\\Desktop\\Ausgabe\\'+plotName+' {}.png'
 renderingFileName = 'TrainingOutput.txt'
 comment = 'Experiment 3., lok Sharing, 8 Kerne'
 print(comment)

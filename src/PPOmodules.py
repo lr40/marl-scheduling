@@ -2,14 +2,14 @@ import torch
 import torch.nn as nn
 from torch.distributions import Categorical
 from collections import deque
-
+import math
 class ExperienceBuffer:
     def __init__(self):
         self.actions = []
         self.states = []
         self.logprobs = []
         self.rewards = []
-        
+        #self.is_terminals = []
     
 
     def clear(self):
@@ -17,17 +17,16 @@ class ExperienceBuffer:
         del self.states[:]
         del self.logprobs[:]
         del self.rewards[:]
-        
+        #del self.is_terminals[:]
 
 
 class ActorCritic(nn.Module):
     def __init__(self, amountInputChannels, numberOfActions, numberOfNeurons):
         super(ActorCritic, self).__init__()
-        '''
-        outputs a probability distribution of choosing an action.
-        0 stands for accepting the first offer or bidding on the first core.
-        The action numberOfActions stands for the rejection of any offer, or that no offer is made.
-        '''
+
+        #gibt eine Wahrscheinlichkeits-Verteilung aus, eine Handlung zu wählen.
+        #0 steht für die Annahme des ersten Angebots oder das Bieten auf den ersten Kern.
+        #Die Handlung numberOfActions steht für die Ablehung eines jeden Angebots, oder dass kein Angebot gemacht wird.
         self.actor = nn.Sequential(
                         nn.Linear(amountInputChannels, numberOfNeurons),
                         nn.Tanh(),
@@ -37,7 +36,7 @@ class ActorCritic(nn.Module):
                         nn.Softmax(dim=-1)
                     )
 
-        #evaluates the states
+        #bewertet die Zustände
         self.critic = nn.Sequential(
                         nn.Linear(amountInputChannels, numberOfNeurons),
                         nn.Tanh(),
@@ -54,11 +53,10 @@ class ActorCritic(nn.Module):
         action_probs = self.actor(state)
         dist = Categorical(action_probs)
 
+        #berücksichtigt also die Wahrscheinlichkeiten beim Ziehen.
         action = dist.sample()
-        '''
-        Generally the format is: the first action returns 0, the second returns 1 and so on. If the actions are to be indices, this is important to know.
-        Simply the ln() of the probability.
-        '''
+        #Generell ist das Format: Die erste Handlung liefert 0 zurück, die zweite 1 usw. Wenn die Handlungen Indizes sein sollen, ist das wichtig zu wissen.
+        # Einfach der ln() der Wahrscheinlichkeit.
         action_logprob = dist.log_prob(action)
         
         return action.detach(), action_logprob.detach()
@@ -106,7 +104,7 @@ class PPO:
             state = state.float()
             action, action_logprob = self.policy_old.act(state)
         
-        #state and action are already stored on this level.
+        #state und action werden hier also schon auf dieser Ebene abgespeichert.
         self.buffer.states.append(state)
         self.buffer.actions.append(action)
         self.buffer.logprobs.append(action_logprob)
@@ -200,9 +198,9 @@ class FreePriceOfferPPO(object):
         self.world = world
         numberOfNeurons = 16
         self.coreChooserInputAmount = ((world.numberOfCores * 2) + 2)
-        self.coreChoserNumOfActions = (world.numberOfCores + 1) # The option of not making an offer exists.
+        self.coreChoserNumOfActions = (world.numberOfCores + 1) # Die Möglichkeit, ein Angebot nicht zu machen, gibt es.
         self.coreChooser = PPO(world,self.coreChooserInputAmount,self.coreChoserNumOfActions,env.LR_ACTOR, env.LR_CRITIC, env.OFFER_GAMMA, env.EPS_CLIP,env.RAW_K_EPOCHS,numberOfNeurons)
-        self.priceChooserInputAmount = 4 # prio, length for the selected core; prio, length for the own queue slot
+        self.priceChooserInputAmount = 4 # prio, Länge für den gewählten Kern; prio, Länge für den eigenen Queue-Slot
         self.priceChoserNumOfActions = world.maxSumToOffer + 1
         self.priceChooser = PPO(world,self.priceChooserInputAmount,self.priceChoserNumOfActions,env.LR_ACTOR, env.LR_CRITIC, env.OFFER_GAMMA, env.EPS_CLIP,env.RAW_K_EPOCHS,numberOfNeurons)
     
@@ -213,14 +211,15 @@ class FreePriceOfferPPO(object):
     def selectAction(self,coreChooserInput):
         coreChooserAction = self.coreChooser.selectAction(coreChooserInput)
         
-        #For the possibility that core ID 0 was selected (no offer), the price chooser should also choose nix.
+        #Für die Möglichkeit, dass Kern-ID 0 ausgewählt wurde (kein Angebot), sollte der Price-Chooser auch nix wählen.
         if coreChooserAction != 0:
             priceChooserInput = torch.cat((coreChooserInput[(coreChooserAction*2):(coreChooserAction*2+2)],coreChooserInput[-2:]))
             priceChooserAction = self.priceChooser.selectAction(priceChooserInput)
         else:
-            #Happens only so that afterwards no more rewards are stored as observations + actions.
+            #Passiert nur, damit hinterher nicht mehr Rewards als Beobachtungen + Actions abgespeichert sind.
+            #Andere Lösungen wären viel zu aufwendig.
             self.priceChooser.selectAction(torch.tensor([-5,-5,-5,-5]))
-            priceChooserAction = -5   #Arbitrary, recognizable value, in order to be able to recognize during debugging more simply
+            priceChooserAction = -5   #Beliebiger, erkennbarer Wert, ums beim Debuggen einfacher erkennen zu können
         
         return coreChooserAction, priceChooserAction
 
@@ -259,6 +258,7 @@ class GloballySharedPPO:
             state = state.float()
             action, action_logprob = self.policy_old.act(state)
         
+        #state und action werden hier also schon auf dieser Ebene abgespeichert.
         self.buffers[agentID - 1][subID].states.append(state)
         self.buffers[agentID - 1][subID].actions.append(action)
         self.buffers[agentID - 1][subID].logprobs.append(action_logprob)
@@ -365,6 +365,7 @@ class LocallySharedPPO:
             state = state.float()
             action, action_logprob = self.policy_old.act(state)
         
+        #state und action werden hier also schon auf dieser Ebene abgespeichert.
         self.buffers[subID].states.append(state)
         self.buffers[subID].actions.append(action)
         self.buffers[subID].logprobs.append(action_logprob)

@@ -1,7 +1,7 @@
 from HardcodedModules import HardcodedAcceptor, HardcodedAuctioneerAcceptor
 import random, torch, numpy as np
 
-#Empty offers are padded with -2, -2, empty cores and empty jobs are padded with -1, -1
+#Leere Angebote werden mit -2, -2 gepaddet, leere Kerne und leere Jobs werden mit -1, -1 gepaddet
 
 def calculateRewardRatio(priority,remainingLength): 
     if (priority==-1)|(remainingLength==-1):
@@ -15,7 +15,7 @@ def gatherDividedAuctioneerObservation(world):
     auctioneerObservationTensors = []
     acceptorNetOfferIDs = []
     for i in range(world.numberOfCores):
-        # (i + 1) is the core ID
+        # (i + 1) ist die Kern-ID
         observationTensor, correspondingOfferIDs = getAuctioneerAcceptorObservationTensorAndIDs(world,(i + 1))
         auctioneerObservationTensors.append(observationTensor)
         acceptorNetOfferIDs.append(correspondingOfferIDs)
@@ -25,15 +25,15 @@ def gatherDividedAuctioneerObservation(world):
 def getAuctioneerAcceptorObservationTensorAndIDs(world, coreID):
         core = world.cores[coreID - 1]
         ownershipFlag = True if (core.ownerID == 0) else False
-        #The net reward here is really just the current priority, since the reward is at double and the other half has been ceded to the previous owner.
+        # Der Netto-Reward ist hier wirklich einfach die aktuelle Priorität, da der Reward beim doppelten liegt und die andere Hälfte ja an den vorherigen Besitzer abgetreten wurde.
         coreObservation = [{'ownershipFlag':int(ownershipFlag) , 'netReward':(core.job.priority) if ownershipFlag else (-1), 'remainingLength': (core.job.remainingLength) if ownershipFlag else (-1)}]
         offersToThatCoreToThatAgent = [{'offeredReward': offer.offeredReward,'necessaryTime': offer.necessaryTime} for offer in world.offers if (offer.recipientID == 0)&(offer.coreID==coreID)]
-        #-2 is simply the default value chosen here for non-existent offers to scale the observation to a fixed length.
+        #-2 ist einfach der hier gewählte Default-Wert für nicht existente Angebote, um die Beobachtung auf eine fixe Länge zu skalieren.
         #world.maxAmountOfOffersToOneAgent = (world.numberOfAgents - 1) * world.collectionLength
         offersToThatCoreToThatAgent = pad(offersToThatCoreToThatAgent, world.maxAmountOfOffersToOneAgent,{'priority': -2,'necessaryTime': -2})
         correspondingOfferIDs = [offer.offerID for offer in world.offers if (offer.recipientID == 0)&(offer.coreID==coreID)]
         correspondingOfferIDs = pad(correspondingOfferIDs,world.maxAmountOfOffersToOneAgent,-2)
-        
+        #Diese offerIDs werden später noch wichtig, da das Akzeptiernetz ja per Index-Aktion ein Angebot zur Annahme auswählt.
         observationDict = coreObservation + offersToThatCoreToThatAgent
         observationTensor = torch.tensor(np.concatenate((np.array([list(coreObs.values()) for coreObs in coreObservation]).reshape(-1),np.array([list(dicti.values()) for dicti in offersToThatCoreToThatAgent]).reshape(-1))),requires_grad=False)
         

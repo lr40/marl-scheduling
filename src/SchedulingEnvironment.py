@@ -47,7 +47,7 @@ class SchedulingEnv(gym.Env):
         else:
             done = False
         
-        #Update past core priorities needed for future correct reward determination of bid networks.
+        #Aktualisiere die vergangenen Kern-Prioritäten, die für die zukünftige, korrekte Reward-Ermittlung der Angebots-netze benötigt werden.
         self.formerCorePrios = [core.job.priority for core in self.world.cores]
         self.formerCoreLengths = [core.job.remainingLength for core in self.world.cores]
         
@@ -107,7 +107,7 @@ class SchedulingEnv(gym.Env):
         return nestedAcceptorNetActionTensors,nestedOfferNetActionTensors
     
     def calculateAverageAcceptionQuality(self):
-        # refers only to non-auctioneers, because only they learn
+        # bezieht sich nur auf Nicht-Auktionatoren, da nur sie lernen
         acceptionQualities = []
         nonAuctioneerOffers = [offer for offer in self.world.acceptedOffers if offer.recipientID!= 0]
         for offer in nonAuctioneerOffers:
@@ -160,9 +160,9 @@ class PPOFullyAggregatedFixPriceEnv(PPOSchedulingEnv):
     def getRewards(self):
         return getAggregatedFixedPricesReward(self)
     
-    #A bit confusing: agentReward here means the Rewardchain rewards
+    #Ein bisschen verwirrend: agentReward meint hier die Rewardchain-Rewards
     def saveRewards(self,offerUnitRewards,acceptorUnitRewards,agentReward):
-        #simply works with the semi-aggregated rewards, which are then added at the agent level.
+        #arbeitet einfach mit den halb-aggregierten Rewards, die dann auf der Agenten-Ebene addiert werden.
         for i, agent in enumerate(self.world.agents):
             fullyAggregatedReward = agentReward[i] + offerUnitRewards[i][0]
             agent.saveRewards(fullyAggregatedReward) #offerUnitRewards[i],acceptorUnitRewards[i]
@@ -288,7 +288,7 @@ class DQNSchedulingEnv(SchedulingEnv):
                 policyNet = offerNets[j]
                 targetNet = targetNets[j]
                 optimizer = optimizers[j]
-              
+                #Eventuell muss die Optimierung nicht immer durchgeführt werden, sondern nur periodisch.               
                 optimize_model(self,memory,self.BATCH_SIZE,policyNet,targetNet,self.OFFER_GAMMA,optimizer)
 
     def updateAcceptorMemoriesAndOptimize(self,acceptorActions,acceptorNetRewards):

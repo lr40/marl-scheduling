@@ -40,7 +40,8 @@ class Core(object):
     
     def dispatchNewJobAndReturnOldOne(self, newJob):
         #the old job has to be returned to the accepting party
-        if self.job.empty== True:       #Also empty jobs will be returned.
+        #core muss noch gefunden werden
+        if self.job.empty== True:       #Diese Fallunterscheidung ist nur der Übersicht halber, damit klar ist, dass auch leere Jobs retourniert werden.
             oldJob = Job(0,0,0,True,None,None)
         else:
             oldJob = self.job
@@ -61,9 +62,9 @@ class Job(object):
             self.priority = -1
             self.remainingLength = -1
             self.empty = empty
-            self.wait = False   # Is initially set to False. If the empty job is a placeholder for a job currently being calculated, the attribute will be set to True.
-                                # After terminating the corresponding non-empty job, it is set to True and thus tells the randomized refiller that this slot is available for a randomized refill.
-            self.jobKind = -1 
+            self.wait = False   # Wird erstmal auf False gesetzt. Falls der leere Job noch ein Platzhalter für einen gerade in der Berechnung steckenden Job ist
+            self.jobKind = -1   # bleibt das Attribut auf True. Nach Terminierung dieses Jobs, wird es auf True gesetzt und signalisiert damit dem randomisierten Nachfüller,
+                                # dass dieser Slot für eine randomisierte Nachfüllung zur Verfügung steht.
         else:
             self.jobID = Job.IDCounter
             Job.IDCounter += 1
@@ -72,7 +73,7 @@ class Job(object):
             self.remainingLength = initialLength
             self.initialLength = initialLength
             self.empty = empty
-            self.wait = False   # Will be set to True when an offer is made. Stays this way for one episode and then go back to False.
+            self.wait = False   #Wird auf True gesetzt, wenn ein Angebot gemacht wurde. Sollte für eine Episode so bleiben und dann wieder auf False gehen
             self.birthDate = birthDate
             self.jobKind = jobKind
 
@@ -90,7 +91,7 @@ class JobCollection(list):
         self.collectionLength = collectionLength
         self.numberOfFreeSlots = collectionLength
     
-    def insertJob(self, job):     
+    def insertJob(self, job):      #Bewirkt, dass der erste freie Platz befüllt wird, aber dass andere Einträge keinesfalls verschoben werden.
         if self.numberOfFreeSlots > 0:
             for _ in range(self.collectionLength):
                 if self[_].empty == True:
@@ -98,11 +99,11 @@ class JobCollection(list):
                     self.numberOfFreeSlots -= 1
                     break
         else:
-            raise "JobCollection is full. The next job couldn't be added.."           
+            raise "Die JobCollection ist voll. Ein weiterer Job konnte nicht hinzugefügt werden."           
     
     def removeAndReturnEntry(self, queuePosition):
         result = self[queuePosition]
-        self[queuePosition] = Job(0,0,0,True,None,None)   #Inserting the empty job such that the list is always filled with jobs.
+        self[queuePosition] = Job(0,0,0,True,None,None)   #Einfügen des leeren Jobs, damit die Liste immer mit Jobs befüllt ist.
         self.numberOfFreeSlots += 1
         return result
     
@@ -112,14 +113,15 @@ class JobCollection(list):
     
     def getcollectionObservation(self):
         result = [job.getJobObservation() for job in self]
-        return result 
+        return result  #Hatte hier auch mal mit list(enumerate(result)) gearbeitet. Aber der Listenplatz ist ja schon implizit durch die Ordnung gegeben.
+                    # Wie bei den anderen Observations auch.
 
     def sortByPriority(self):
         self.sort(key=lambda x: x.getJobState()['priority'])
 
 class Offer(object):
-    #At each end of a round, this variable has to be reset to 1, in order to keep the observation space low.
-    offerID = 1 #Only temporarily valid for one round
+    #Diese Variable muss bei jedem Rundenende wieder auf eins zurückgesetzt werden, um den Beobachtungsraum klein zu halten.
+    offerID = 1 #Sind nur temporär gültig für eine Episode
     def __init__(self,offererID,recipientID,coreID,queuePosition,jobID,offeredReward,necessaryTime,empty,round1,prio1):
         if empty:
             self.offerID = -1
@@ -139,7 +141,7 @@ class Offer(object):
             self.coreID = coreID
             self.queuePosition = queuePosition
             self.jobID = jobID
-            self.prio1 = prio1 #is needed in order to determine rewards for core choosers and price setters
+            self.prio1 = prio1 # Dient nur der Information, um den Reward für die Kern- und Preissetzer bestimmen zu können
             self.offeredReward = offeredReward
             self.necessaryTime = necessaryTime
             self.jobKind = None
@@ -150,7 +152,7 @@ class Offer(object):
         return vars(self)
     
     def getOfferObservation(self):
-        vars1 = vars(self)                              
+        vars1 = vars(self)                              #offererID könnte noch wichtig werden für den aktienbasierten Ansatz
         resultDictionary = { key: vars1[key] for key in ['offerID','offererID','coreID','priority','necessaryTime'] }
         return resultDictionary
 
@@ -171,9 +173,9 @@ class World(object):
         self.maxAmountOfOffers = self.numberOfAgents * self.collectionLength
         self.maxAmountOfOffersToOneAgent = (self.numberOfAgents) * self.collectionLength  #You do shake hands with yourself to reduce complexity.
         self.maxAmountOfAcceptionsPerTimeStepPerAgent = min(self.maxAmountOfOffersToOneAgent,self.numberOfCores)
-        self.offers = []     
+        self.offers = []     #Hier waren früher leere Angebote drin. Die müssen ja aber eigentlich nur Teil der Beobachtung sein.
         self.newJobsPerRoundPerAgent = params['newJobsPerRoundPerAgent']
-        
+        #Refactoring: Die beiden folgenden dienen eher der Abrechnung und könnten daher auch Teil der Environment sein.
         self.liabilityList = [deque([]) for _ in range(self.numberOfCores)]
         #                               Kern-ID,        an agentID,    von agentID,      offeredReward, necessaryTime
         self.jobTerminationInfo = []
@@ -190,16 +192,14 @@ class World(object):
         self.auctioneer = Auctioneer(self)
         self.auctioneer.updateOwnedCores(self)
     
-    def resetLiabilityListForACore(self,coreID):  #-1, because index and ID are shifted by one, +1, because the auctioneer is added to it
+    def resetLiabilityListForACore(self,coreID):  #-1, weil Index und ID um eins verschoben sind, +1, weil ja noch der Auktionator dazu kommt
         self.liabilityList[coreID -1] = deque([]) 
     
     def executeAnOffer(self,offerID):
         offer = next((x for x in self.offers if x.offerID==offerID))
         core = next((x for x in self.cores if x.coreID == offer.coreID))
-        '''
-        It could be that the ownership status has changed in the meantime. That the agent has accepted an offer for
-        a core for which he no longer has any ownership rights.
-        '''
+        #Es könnte ja sein, dass sich der Besitzstatus in der Zwischenzeit geändert hat. Dass der Agent ein Angebot für einen Kern angenommen hat, für
+        # den er gar keine Besitzrechte mehr hat.
         if (offer.recipientID == core.ownerID):
             queuePosition = offer.queuePosition
             if offer.recipientID == 0:
@@ -210,14 +210,14 @@ class World(object):
                 recipientID = recipient.agentID
             offerer = next((x for x in self.agents if x.agentID==offer.offererID))
             newJob = offerer.collection.removeAndReturnEntry(queuePosition)
-            newJob.wait = False   # Will be reset. It should be fresh when it is returned.
+            newJob.wait = False   # Wird zurückgesetzt. Beim Zurückgeben soll er ja frisch sein.
             oldJob = core.dispatchNewJobAndReturnOldOne(newJob)
             if recipientID != 0:
-                recipient.collection.insertJob(oldJob) #The old job is returned to the accepting party. The random generator must ensure that there is room for it.
+                recipient.collection.insertJob(oldJob) #Der alte Job wird wieder an die annehmende Partei zurückgegeben. Dass dafür auch Platz ist muss der Zufallsgenerator sicherstellen.
                 self.acceptedOfferRatios[recipientID - 1][core.coreID -1].append([offer.offeredReward,offer.necessaryTime])
             liabilityListEntry = copy.deepcopy(offer)
             liabilityListEntry.round = self.round
-            self.liabilityList[core.coreID-1].appendleft(liabilityListEntry)
+            self.liabilityList[core.coreID-1].appendleft(liabilityListEntry)    # -1 von der CoreID;
                                                                                            
             recipient.updateOwnedCores(self)
             offerer.updateOwnedCores(self)
@@ -225,7 +225,7 @@ class World(object):
     
     def step1(self,allOfferNetActionTuples,allAcceptorNetsActionTensors,correspondingOfferIDs,auctioneer_action, auctioneer_correspondingOfferIDs):
         '''
-        Formats of the transferred aggregated actions and information:
+        Formate der übergebenen, aggregierten Handlungen und Informationen:
         allAcceptorNetsActionTensors: [array1([Index1, Index2, ..., IndexNumCores]),...,arrayNumAgents([Index1, Index2, ..., IndexNumCores])]
         allOfferNetActionTuples: [array1([Offer-CoreID1,...,Offer-CoreIDCollLen]),...,arrayNumAgents([Offer-CoreID1,...,Offer-CoreIDCollLen])]
         correspondingOfferIDs: [list1[array1([OfferID1,...,OfferIDMaxAmountOffers]),...,arrayNumCores([OfferID1,...,OfferIDMaxAmountOffers]],...,listNumAgents[[OfferID1,...,OfferIDMaxAmountOffers]),...,arrayNumCores([OfferID1,...,OfferIDMaxAmountOffers]]]
@@ -236,13 +236,13 @@ class World(object):
         self.jobTerminationInfo = []
         self.acceptedOffers = []
         
-        self.executeAgentAcceptions1(allAcceptorNetsActionTensors,correspondingOfferIDs) #comment out to disable intra-agent trading
+        self.executeAgentAcceptions1(allAcceptorNetsActionTensors,correspondingOfferIDs) #auskommentieren um die Kein-Trading-Benchmark zu erstellen
         
         self.executeAuctioneerAcceptions(auctioneer_action,auctioneer_correspondingOfferIDs)
         
         self.processOneTimestepAndUpdateOwnership()
         
-        #Reset the offers of the last round
+        #Rücksetzen der Angebote der letzten Runde
         self.offers = []
         Offer.offerID = 1
 
@@ -260,16 +260,16 @@ class World(object):
             if core.job.empty == False:
                 core.job.remainingLength -= 1
                 if core.job.remainingLength == 0:
-                    
+                    #Durch die doppelte Entlohnung kann der Reward einfach fair geteilt werden. Es muss kein Preis mehr festgelegt werden.
                     generatedReward = self.rewardMultiplier * core.job.priority
                     jobID = core.job.jobID
                     owner = next((x for x in self.agents if x.agentID == core.ownerID))
                     ownerID = owner.agentID
                     self.jobTerminationInfo.append(copy.deepcopy((core,ownerID,jobID,generatedReward,self.round+1)))
-                                    # -1 to avoid an off-by-one error. Job is generated at the end of the old round with the old round number as birthdate.
+                                                                            # -1, um einen Off-By-One Fehler zu vermeiden. Job wird ja am Ende der alten Runde generiert mit der alten Rundennummer als Birthdate
                     self.verweilzeiten.append(Verweilzeit(core.job.priority,core.job.initialLength,self.round - core.job.birthDate,(self.round - core.job.birthDate - 1)/core.job.initialLength))
                     core.assignCoreToAuctioneer()
-        #This whole owned core list is really just for testing. It may be unnecessary.
+        #Diese ganze owned Core Liste ist eigentlich nur zum Testen. Eventuell ist sie unnötig.
         self.auctioneer.updateOwnedCores(self)
         for agent in self.agents:
             agent.updateOwnedCores(self)
@@ -283,22 +283,21 @@ class World(object):
         for agent in self.agents:
             if (len(agent.ownedCores) + self.newJobsPerRoundPerAgent) <= agent.collection.numberOfFreeSlots:
                 agent.fillCollectionRandomly(amountOfNewEntries=self.newJobsPerRoundPerAgent)
-                '''
-                This ensures that the collection can never overflow. 
-                For example, if you were to sell all of your own cores and then a new job was added.
-                '''
+                #So wird sichergestellt, dass die collection niemals überlaufen kann. Zum Beispiel, wenn man alle eigenen Kerne verkaufen würde und
+                # dann noch ein neuer Job hinzukäme.
+    
     def executeAuctioneerAcceptions(self,auctioneerAction,auctioneer_correspondingOfferIDs):
 
         for j, chosenIndexValue in enumerate(auctioneerAction):
-            '''Because if the chosen index is greater by one (see below), no offer was accepted on purpose. 
-            This action should be equivalent to accepting an empty offer.'''
-            if chosenIndexValue < len(auctioneer_correspondingOfferIDs[j]):
-                offerIDToBeExecuted = auctioneer_correspondingOfferIDs[j][chosenIndexValue]
-                #Der Auktionator könnte als lernende Einheit auch nicht-vorhandene ("negative") Offer-IDs annehmen.
-                if 0 < offerIDToBeExecuted:
-                    self.executeAnOffer(offerIDToBeExecuted)
-            else:
-                assert (chosenIndexValue == len(auctioneer_correspondingOfferIDs[j]))
+                #Denn wenn der gewählte Index um eins größer ist (s.u.), wurde mit Absicht kein Angebot angenommen.
+                #Diese Handlung dürfte äquivalent sein zur Annahme eines leeren Angebots.
+                if chosenIndexValue < len(auctioneer_correspondingOfferIDs[j]):
+                    offerIDToBeExecuted = auctioneer_correspondingOfferIDs[j][chosenIndexValue]
+                    #Der Auktionator könnte als lernende Einheit auch nicht-vorhandene ("negative") Offer-IDs annehmen.
+                    if 0 < offerIDToBeExecuted:
+                        self.executeAnOffer(offerIDToBeExecuted)
+                else:
+                    assert (chosenIndexValue == len(auctioneer_correspondingOfferIDs[j]))
     
 
     def executeAgentAcceptions1(self,allAcceptorNetsActionTensors,correspondingOfferIDs):
@@ -306,10 +305,11 @@ class World(object):
             offerIDs = correspondingOfferIDs[i]
             chosenIndexValues = allAcceptorNetsActionTensors[i]
             for j, chosenIndexValue in enumerate(chosenIndexValues):
-                '''Because if the chosen index is greater by one (see below), no offer was accepted on purpose. 
-                This action should be equivalent to accepting an empty offer.'''
+                #Denn wenn der gewählte Index um eins größer ist (s.u.), wurde mit Absicht kein Angebot angenommen.
+                #Diese Handlung dürfte äquivalent sein zur Annahme eines leeren Angebots.
                 if chosenIndexValue < len(offerIDs[j]):
                     offerIDToBeExecuted = offerIDs[j][int(chosenIndexValue)]
+                    #Bei möglichen Fehlern siehe oben
                     if 0 < offerIDToBeExecuted:
                         self.executeAnOffer(offerIDToBeExecuted)
                 else:

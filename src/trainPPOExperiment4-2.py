@@ -4,22 +4,23 @@ import torch
 import numpy as np
 from itertools import count
 from PPOmodules import *
-from env.world import *
-from env.SchedulingEnvironment import *
+from world import *
+from SchedulingEnvironment import *
+from Plot import *
 from contextlib import redirect_stdout
-import os
 import sys, pickle
+from math import isclose
 
 sys.stdout = sys.__stdout__
 original_stdout = sys.stdout
 
 #Setup of this run
 PLOTTING = False
-fileName = "data/Experiment 3/halb-aggregiert/data{}.pkl"
+fileName = "data/Experiment 4/commRew1/data{}.pkl"
 plotName = 'PPO Training'
-plotPath = path = ''
+plotPath = path = 'C:\\Users\\lenna\\Desktop\\Ausgabe\\'+plotName+' {}.png'
 renderingFileName = 'TrainingOutput.txt'
-comment = 'Experiment 3., aufgeteilt, Handlungslogging, 8 Kerne'
+comment = 'Experiment 4.,3 Jobs, freie Preise, commercial Reward'
 print(comment)
 RENDERING = False
 
@@ -27,7 +28,7 @@ RENDERING = False
 #general settings parameters
 dividedAgents = True
 hardcodedAgents = False
-freePrices = False
+freePrices = True
 aggregatedAgents = False
 fullyAggregatedAgents = False
 locallySharedParameters = False
@@ -35,28 +36,29 @@ globallySharedParameters = False    #if int(sys.argv[1])==1 else False
 
 
 #Parameters of the world
-num_episodes = 2000
+commercialFreePriceReward = True
+num_episodes = 4000
 episodeLength = 100
-numberOfAgents = 1
-numberOfCores = 8
+numberOfAgents = 2
+numberOfCores = 3
 rewardMultiplier = 1 
-possibleJobPriorities = [3]
-possibleJobLengths = [1]
+possibleJobPriorities = [2,4,8]
+possibleJobLengths = [5,5,5]
 fixPricesList = [1]
-probabilities = [1]
+probabilities = [(1/3),(1/3),(1/3)]
 meanJobFraction = statistics.mean([F(a,b) for a,b in zip(possibleJobPriorities,possibleJobLengths)])
-collectionLength = 8
-newJobsPerRoundPerAgent = 8
+collectionLength = 3
+newJobsPerRoundPerAgent = 1
 maxVisibleOffers = 4
 acceptorCentralisationFactor = numberOfAgents*numberOfCores if globallySharedParameters else (numberOfCores if locallySharedParameters else 1)
 offerNetCentralisationFactor = numberOfAgents*collectionLength if globallySharedParameters else (collectionLength if locallySharedParameters else 1)
 assert (len(possibleJobLengths)==len(possibleJobPriorities))
-assert sum(probabilities) == 1
+assert isclose(sum(probabilities),1,abs_tol=1e-8)
 
 world_params_dict = {'num_episodes': num_episodes, 'episodeLength': episodeLength, 'numberOfAgents': numberOfAgents, 'numberOfCores': numberOfCores,\
     'possibleJobPriorities': possibleJobPriorities, 'possibleJobLengths': possibleJobLengths,'collectionLength': collectionLength,'probabilities': probabilities,
     'newJobsPerRoundPerAgent': newJobsPerRoundPerAgent, 'rewardMultiplier': rewardMultiplier, 'freePrices': freePrices, 'fixPricesList': fixPricesList,\
-    'maxVisibleOffers': maxVisibleOffers}
+    'maxVisibleOffers': maxVisibleOffers,'commercialFreePrices':commercialFreePriceReward}
 world = World(world_params_dict)
 
 #RL Hyperparameters
@@ -66,7 +68,7 @@ LR_ACTOR = 0.003
 LR_CRITIC = 0.01
 EPS_CLIP = 0.2          
 maxJobLength = max(possibleJobLengths)
-ACCEPTOR_GAMMA = -((1-maxJobLength)/maxJobLength)+0.04 #0.5 + float(sys.argv[1])*0.05
+ACCEPTOR_GAMMA = -((1-maxJobLength)/maxJobLength)+0.15 #0.5 + float(sys.argv[1])*0.05
 OFFER_GAMMA = 0.5
 RAW_K_EPOCHS = 2   #1 * int(sys.argv[1])
 CENTRALISATION_SAMPLE = 2
@@ -85,7 +87,7 @@ if dividedAgents is True:
     if freePrices is False:
         env = PPODividedFixedPriceEnv(world,RLparamsDict)
     if freePrices is True:
-        env = PPODividedFreePriceEnv(world,RLparamsDict)
+        env = PPODividedFreePriceEnv(world,RLparamsDict,commercialFreePriceReward)
 
 if aggregatedAgents is True:
     env = PPOAggregatedFixPriceEnv(world,RLparamsDict)
@@ -125,17 +127,6 @@ averageEpisodicAcceptionAmounts = []
 averageEpisodicTerminationRevenues = []
 averageEpisodicTradeRevenues = []
 
-###
-averageEpisodicOfferAction0 = []
-averageEpisodicOfferAction1 = []
-averageEpisodicOfferAction2 = []
-averageEpisodicOfferAction3 = []
-averageEpisodicOfferAction4 = []
-averageEpisodicOfferAction5 = []
-averageEpisodicOfferAction6 = []
-averageEpisodicOfferAction7 = []
-###
-
 time1 = time.time()
 # training loop
 for i_episode in range(num_episodes):
@@ -164,28 +155,9 @@ for i_episode in range(num_episodes):
     collectedAcceptionQualities = []
     collectedAcceptionAmounts = []
 
-    ###
-    collectedOfferAction0 = []
-    collectedOfferAction1 = []
-    collectedOfferAction2 = []
-    collectedOfferAction3 = []
-    collectedOfferAction4 = []
-    collectedOfferAction5 = []
-    collectedOfferAction6 = []
-    collectedOfferAction7 = []
-    ###
 
     for t in count():
         acceptorActions,offerActions = env.getActionForAllAgents(newAcceptorObservationTensors,newOfferObservationTensors)
-        
-        collectedOfferAction0.append(offerActions[0][0])
-        collectedOfferAction1.append(offerActions[0][1])
-        collectedOfferAction2.append(offerActions[0][2])
-        collectedOfferAction3.append(offerActions[0][3])
-        collectedOfferAction4.append(offerActions[0][4])
-        collectedOfferAction5.append(offerActions[0][5])
-        collectedOfferAction6.append(offerActions[0][6])
-        collectedOfferAction7.append(offerActions[0][7])
         
              
         auctioneer_action = world.auctioneer.getAuctioneerAction(newAuctioneerObservation)
@@ -253,16 +225,7 @@ for i_episode in range(num_episodes):
             averageEpisodicAgentRewards.append((accumulatedAgentReward / episodeLength))
             averageEpisodicTradeRevenues.append((env.tradeRevenues / (episodeLength*numberOfAgents*numberOfCores)))
             averageEpisodicTerminationRevenues.append((env.terminationRevenues / (episodeLength*numberOfAgents*numberOfCores)))
-            ###
-            averageEpisodicOfferAction0.append(statistics.mean(collectedOfferAction0))
-            averageEpisodicOfferAction1.append(statistics.mean(collectedOfferAction1))
-            averageEpisodicOfferAction2.append(statistics.mean(collectedOfferAction2))
-            averageEpisodicOfferAction3.append(statistics.mean(collectedOfferAction3))
-            averageEpisodicOfferAction4.append(statistics.mean(collectedOfferAction4))
-            averageEpisodicOfferAction5.append(statistics.mean(collectedOfferAction5))
-            averageEpisodicOfferAction6.append(statistics.mean(collectedOfferAction6))
-            averageEpisodicOfferAction7.append(statistics.mean(collectedOfferAction7))
-            ###
+            
             break
 
 argsDict = {}
@@ -280,18 +243,9 @@ argsDict['acceptionAmount']= averageEpisodicAcceptionAmounts
 argsDict['terminationRevenues'] = averageEpisodicTerminationRevenues
 argsDict['tradeRevenues'] = averageEpisodicTradeRevenues
 argsDict['params'] = parameters
-###
-argsDict['0'] = averageEpisodicOfferAction0
-argsDict['1'] = averageEpisodicOfferAction1
-argsDict['2'] = averageEpisodicOfferAction2
-argsDict['3'] = averageEpisodicOfferAction3
-argsDict['4'] = averageEpisodicOfferAction4
-argsDict['5'] = averageEpisodicOfferAction5
-argsDict['6'] = averageEpisodicOfferAction6
-argsDict['7'] = averageEpisodicOfferAction7
-###
 
 #Saving the episodic results
+i=0
 while os.path.isfile(fileName.format(i)):
     i += 1
 a_file = open(fileName.format(i),"wb")

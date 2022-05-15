@@ -4,23 +4,22 @@ import torch
 import numpy as np
 from itertools import count
 from PPOmodules import *
-from env.world import *
-from env.SchedulingEnvironment import *
+from world import *
+from SchedulingEnvironment import *
+from Plot import *
 from contextlib import redirect_stdout
 import sys, pickle
-import os
-from math import isclose
 
 sys.stdout = sys.__stdout__
 original_stdout = sys.stdout
 
 #Setup of this run
 PLOTTING = False
-fileName = "data/Experiment 4/n_commRew/data{}.pkl"
+fileName = "data/Test2/data{}.pkl"
 plotName = 'PPO Training'
-plotPath = path = ''
+plotPath = path = 'C:\\Users\\lenna\\Desktop\\Ausgabe\\'+plotName+' {}.png'
 renderingFileName = 'TrainingOutput.txt'
-comment = 'Experiment 5.'
+comment = 'Experiment 1. 4 Agenten, aufgeteilt'
 print(comment)
 RENDERING = False
 
@@ -28,7 +27,7 @@ RENDERING = False
 #general settings parameters
 dividedAgents = True
 hardcodedAgents = False
-freePrices = True
+freePrices = False
 aggregatedAgents = False
 fullyAggregatedAgents = False
 locallySharedParameters = False
@@ -36,16 +35,15 @@ globallySharedParameters = False    #if int(sys.argv[1])==1 else False
 
 
 #Parameters of the world
-commercialFreePriceReward = False
-num_episodes = 4000
+num_episodes = 12000
 episodeLength = 100
-numberOfAgents = 2
-numberOfCores = 2
+numberOfAgents = 4
+numberOfCores = 4
 rewardMultiplier = 1 
-possibleJobPriorities = [5]
-possibleJobLengths = [5]
-fixPricesList = [1]
-probabilities = [1]
+possibleJobPriorities = [3,10]
+possibleJobLengths = [6,3]
+fixPricesList = [2,7]
+probabilities = [0.8,0.2]
 meanJobFraction = statistics.mean([F(a,b) for a,b in zip(possibleJobPriorities,possibleJobLengths)])
 collectionLength = 3
 newJobsPerRoundPerAgent = 1
@@ -53,12 +51,12 @@ maxVisibleOffers = 4
 acceptorCentralisationFactor = numberOfAgents*numberOfCores if globallySharedParameters else (numberOfCores if locallySharedParameters else 1)
 offerNetCentralisationFactor = numberOfAgents*collectionLength if globallySharedParameters else (collectionLength if locallySharedParameters else 1)
 assert (len(possibleJobLengths)==len(possibleJobPriorities))
-assert isclose(sum(probabilities),1,abs_tol=1e-8)
+assert sum(probabilities) == 1
 
 world_params_dict = {'num_episodes': num_episodes, 'episodeLength': episodeLength, 'numberOfAgents': numberOfAgents, 'numberOfCores': numberOfCores,\
     'possibleJobPriorities': possibleJobPriorities, 'possibleJobLengths': possibleJobLengths,'collectionLength': collectionLength,'probabilities': probabilities,
     'newJobsPerRoundPerAgent': newJobsPerRoundPerAgent, 'rewardMultiplier': rewardMultiplier, 'freePrices': freePrices, 'fixPricesList': fixPricesList,\
-    'maxVisibleOffers': maxVisibleOffers,'commercialFreePrices':commercialFreePriceReward}
+    'maxVisibleOffers': maxVisibleOffers}
 world = World(world_params_dict)
 
 #RL Hyperparameters
@@ -68,9 +66,9 @@ LR_ACTOR = 0.003
 LR_CRITIC = 0.01
 EPS_CLIP = 0.2          
 maxJobLength = max(possibleJobLengths)
-ACCEPTOR_GAMMA = -((1-maxJobLength)/maxJobLength)+0.15 #0.5 + float(sys.argv[1])*0.05
+ACCEPTOR_GAMMA = -((1-maxJobLength)/maxJobLength)+0.04 #0.5 + float(sys.argv[1])*0.05
 OFFER_GAMMA = 0.5
-RAW_K_EPOCHS = 2   #1 * int(sys.argv[1])
+RAW_K_EPOCHS = 3   #1 * int(sys.argv[1])
 CENTRALISATION_SAMPLE = 2
 ACCEPTOR_K_EPOCHS = max(round(RAW_K_EPOCHS/acceptorCentralisationFactor),1)
 OFFER_K_EPOCHS = max(round(RAW_K_EPOCHS/offerNetCentralisationFactor),1)
@@ -87,7 +85,7 @@ if dividedAgents is True:
     if freePrices is False:
         env = PPODividedFixedPriceEnv(world,RLparamsDict)
     if freePrices is True:
-        env = PPODividedFreePriceEnv(world,RLparamsDict,commercialFreePriceReward)
+        env = PPODividedFreePriceEnv(world,RLparamsDict)
 
 if aggregatedAgents is True:
     env = PPOAggregatedFixPriceEnv(world,RLparamsDict)
@@ -155,10 +153,8 @@ for i_episode in range(num_episodes):
     collectedAcceptionQualities = []
     collectedAcceptionAmounts = []
 
-
     for t in count():
         acceptorActions,offerActions = env.getActionForAllAgents(newAcceptorObservationTensors,newOfferObservationTensors)
-        
              
         auctioneer_action = world.auctioneer.getAuctioneerAction(newAuctioneerObservation)
 
@@ -225,7 +221,6 @@ for i_episode in range(num_episodes):
             averageEpisodicAgentRewards.append((accumulatedAgentReward / episodeLength))
             averageEpisodicTradeRevenues.append((env.tradeRevenues / (episodeLength*numberOfAgents*numberOfCores)))
             averageEpisodicTerminationRevenues.append((env.terminationRevenues / (episodeLength*numberOfAgents*numberOfCores)))
-            
             break
 
 argsDict = {}
@@ -244,6 +239,7 @@ argsDict['terminationRevenues'] = averageEpisodicTerminationRevenues
 argsDict['tradeRevenues'] = averageEpisodicTradeRevenues
 argsDict['params'] = parameters
 
+i=0
 #Saving the episodic results
 while os.path.isfile(fileName.format(i)):
     i += 1

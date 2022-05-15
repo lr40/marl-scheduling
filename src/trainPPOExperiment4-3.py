@@ -4,11 +4,11 @@ import torch
 import numpy as np
 from itertools import count
 from PPOmodules import *
-from env.world import *
-from env.SchedulingEnvironment import *
+from world import *
+from SchedulingEnvironment import *
+from Plot import *
 from contextlib import redirect_stdout
 import sys, pickle
-import os
 from math import isclose
 
 sys.stdout = sys.__stdout__
@@ -16,11 +16,11 @@ original_stdout = sys.stdout
 
 #Setup of this run
 PLOTTING = False
-fileName = "data/Experiment 4/n_commRew/data{}.pkl"
+fileName = "data/Experiment 4/n_commRew1/data{}.pkl"
 plotName = 'PPO Training'
-plotPath = path = ''
+plotPath = path = 'C:\\Users\\lenna\\Desktop\\Ausgabe\\'+plotName+' {}.png'
 renderingFileName = 'TrainingOutput.txt'
-comment = 'Experiment 4.,6 Jobs, freie Preise, n_commercial Reward'
+comment = 'Experiment 4.,3 Jobs, freie Preise, n_commercial Reward'
 print(comment)
 RENDERING = False
 
@@ -42,10 +42,10 @@ episodeLength = 100
 numberOfAgents = 2
 numberOfCores = 3
 rewardMultiplier = 1 
-possibleJobPriorities = [2,4,6,8,10,12]
-possibleJobLengths = [5,5,5,5,5,5]
+possibleJobPriorities = [2,4,8]
+possibleJobLengths = [5,5,5]
 fixPricesList = [1]
-probabilities = [(1/6),(1/6),(1/6),(1/6),(1/6),(1/6)]
+probabilities = [(1/3),(1/3),(1/3)]
 meanJobFraction = statistics.mean([F(a,b) for a,b in zip(possibleJobPriorities,possibleJobLengths)])
 collectionLength = 3
 newJobsPerRoundPerAgent = 1
@@ -244,8 +244,8 @@ argsDict['terminationRevenues'] = averageEpisodicTerminationRevenues
 argsDict['tradeRevenues'] = averageEpisodicTradeRevenues
 argsDict['params'] = parameters
 
-i=0
 #Saving the episodic results
+i=0
 while os.path.isfile(fileName.format(i)):
     i += 1
 a_file = open(fileName.format(i),"wb")

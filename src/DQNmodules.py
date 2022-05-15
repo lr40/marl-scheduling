@@ -59,32 +59,30 @@ class DQNEntity(nn.Module):
 
         if sample > eps_treshold:
             with torch.no_grad():
-                # So simply has the format integer without tensor, without anything
+                # Hat also einfach das Format Ganzzahl ohne Tensor, ohne alles.
                 return self.forward(observationTensor).max(0)[1].item()
         else:
             return self.generateRandomAction()
     
     def generateRandomAction(self):
-        '''
-        The actions refer to the index of offers to this agent, to this core. 
-        The action numberOfAction is longer than the index stands for rejection.
-        0 for the acceptance of the first offer (index 0) and so on.
-        '''
+        #Die Aktionen beziehen sich auf den Index der Angebote an diesen Agenten, an diesen Kern. 
+        #Die Aktion numberOfAction ist länger als der Index steht für die Ablehnung.
+        #0 für die Annahme des ersten Angebots (Index 0) usw.
         return float(random.randrange(self.numberOfActions))
 
 class DQNAcceptorNet(DQNEntity):
     def __init__(self, world,env):
-        # Observation of priority and length remaining on a core (plus possession feature) as well as reward offered and length per offer.
+        # Beobachtung der Priorität und verbleibenden Länge auf einem Kern (plus Ownership-Flag), sowie angebotenem Reward und Länge je Angebot
         amountInputChannels = 3 + (2*world.maxAmountOfOffersToOneAgent)
-        # Acceptance of an offer or no offer at all
+        # Annahme eines Angebots oder gar keines Angebots
         numberOfActions = world.maxAmountOfOffersToOneAgent + 1
         super(DQNAcceptorNet, self).__init__(world,env,amountInputChannels,numberOfActions)
         
 class DQNOfferNet(DQNEntity):
     def __init__(self,world,env):
-        # For each core the gross reward (priority) and the remaining time are observed and for the own QueueSlot as well.
+        # Für jeden Kern werden der Brutto-Reward (Priorität) und die verbleibende Zeit beobachtet und für den eigenen QueueSlot auch.
         amountInputChannels = (world.numberOfCores * 2) + 2
-        #So for this queue slot, ultimately a core can be selected or no offer can be made to any core at all (+1).
+        #Für diesen Queue-Slot kann also letztlich ein Kern ausgewählt werden oder an gar keinen Kern ein Angebot gemacht werden (+1).
         numberOfActions = (world.numberOfCores) + 1 
         super(DQNOfferNet, self).__init__(world,env,amountInputChannels,numberOfActions)
         
@@ -100,11 +98,11 @@ def optimize_model(env,memory,BATCH_SIZE,policy_net,target_net,GAMMA,optimizer):
         transitions = memory.sample(BATCH_SIZE)
 
         batch = Transition(*zip(*transitions))
-        #For batch_size = 2
-        #it has the format Transition(state=((1,1...,1),(2,2...,2)), action=(1,2), next_state=((n1,n1,...,n1),(n2,n2,...,n2)), reward=(1,2))
+        #Für batch_size = 2
+        #Hat's das Format Transition(state=((1,1...,1),(2,2...,2)), action=(1,2), next_state=((n1,n1,...,n1),(n2,n2,...,n2)), reward=(1,2))
 
         non_final_mask = torch.tensor (tuple(map(lambda s: s is not None, batch.next_state)), device = "cpu", dtype=torch.bool)
-        #Has the format torch.tensor([bool,bool,...])
+        #Hat das Format torch.tensor([bool,bool,...])
 
         non_final_next_states = torch.cat([torch.tensor(s).unsqueeze(0) for s in batch.next_state if s is not None])
         
@@ -129,7 +127,9 @@ def optimize_model(env,memory,BATCH_SIZE,policy_net,target_net,GAMMA,optimizer):
         #Compute the expected Q values
         expected_state_action_values = (next_state_values * GAMMA) + reward_batch.squeeze(1)
 
-        
+        #hier tritt eine Nutzer-Warnung auf: ungleiche Formate der beiden Argumente
+        # Vermutung: Könnte es einen Unterschied in den Formaten bei acceptor- und offerNets geben? Tritt die Warnung nur in bestimmten Konstellationen auf?
+        # Morgen hier weiter untersuchen und sicherstellen, dass alles ohne Probleme läuft! 
 
         criterion = nn.SmoothL1Loss()
         loss = criterion(state_action_values,expected_state_action_values.unsqueeze(1))
@@ -139,7 +139,7 @@ def optimize_model(env,memory,BATCH_SIZE,policy_net,target_net,GAMMA,optimizer):
         loss.backward()
         for param in policy_net.parameters():
             param.grad.data.clamp_(-1,1)
-            #So smoothes the gradients to the interval [-1,1]
+            #Glättet die Gradienten also ein auf das Intervall [-1,1]
         optimizer.step()
 
     

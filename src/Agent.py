@@ -2,18 +2,19 @@ from random import Random
 from DQNmodules import *
 from PPOmodules import *
 from HardcodedModules import *
-from env.world import *
-import env.world as welt
+from world import *
+import world as welt
 import torch, torch.optim as optim
 import copy
 
 from collections import namedtuple
 
+#Kleines Hilfsmittel, um die Tensoren auf Observation- und Actionspace-Format zu bringen
 def pad(liste,size,padding):
     if len(liste) < size:
         return liste + [padding] * (size - len(liste))
     else:
-        return liste[:size]
+        return liste[:size]     #Die Liste wird auch noch beschnitten, falls sie zu groß war. Wichtig für die angenommenen Angebote
 
 class Agent(object):
     IDCounter = 1
@@ -43,7 +44,7 @@ class Agent(object):
                         randomIndex = i
                         break
                 chosenLength = self.world.possibleJobLengths[randomIndex]
-                chosenPriority = self.world.possibleJobPriorities[randomIndex]                                #randomIndex also specifies the job type
+                chosenPriority = self.world.possibleJobPriorities[randomIndex]                                #randomIndex bezeichnet auch die Art des Jobs
                 self.collection.insertJob(welt.Job(self.agentID,chosenPriority,chosenLength,False,self.world.round,randomIndex))
 
 class AggregatedAgent(Agent):
@@ -60,15 +61,15 @@ class AggregatedAgent(Agent):
         offerIDsAccumulator = []
         for core in self.world.cores:
             ownershipFlag = True if (core.ownerID == self.agentID) else False
-            # The net reward here is really just the current priority, since the reward is at double and the other half has been ceded to the previous owner.
+            # Der Netto-Reward ist hier wirklich einfach die aktuelle Priorität, da der Reward beim doppelten liegt und die andere Hälfte ja an den vorherigen Besitzer abgetreten wurde.
             coreObservation = [{'ownershipFlag':int(ownershipFlag) , 'bruttoReward':(core.job.priority) if ownershipFlag else (-1), 'remainingLength': (core.job.remainingLength) if ownershipFlag else (-1)}]
             offersToThatCoreToThatAgent = [{'offerdReward': offer.offeredReward,'necessaryTime': offer.necessaryTime} for offer in self.world.offers if (offer.recipientID == self.agentID)&(offer.coreID==core.coreID)]
-            #-2 is simply the default value chosen here for non-existent offers to scale the observation to a fixed length.
+            #-2 ist einfach der hier gewählte Default-Wert für nicht existente Angebote, um die Beobachtung auf eine fixe Länge zu skalieren.
             #world.maxAmountOfOffersToOneAgent = (world.numberOfAgents - 1) * world.collectionLength
             offersToThatCoreToThatAgent = pad(offersToThatCoreToThatAgent, self.world.maxAmountOfOffersToOneAgent,{'priority': -2,'necessaryTime': -2})
             correspondingOfferIDs = [offer.offerID for offer in self.world.offers if (offer.recipientID == self.agentID)&(offer.coreID==core.coreID)]
             correspondingOfferIDs = pad(correspondingOfferIDs,self.world.maxAmountOfOffersToOneAgent,-2)
-            #These offerIDs will become important later, since the acceptance network selects an offer for acceptance by index action.
+            #Diese offerIDs werden später noch wichtig, da das Akzeptiernetz ja per Index-Aktion ein Angebot zur Annahme auswählt.
             observationTensor = torch.tensor(np.concatenate((np.array([list(coreObs.values()) for coreObs in coreObservation]).reshape(-1),np.array([list(dicti.values()) for dicti in offersToThatCoreToThatAgent]).reshape(-1))),requires_grad=False)
             observationAccumulator = torch.cat((observationAccumulator,observationTensor),0)
             offerIDsAccumulator.append(correspondingOfferIDs)
@@ -90,14 +91,14 @@ class DividedAgent(Agent):
         acceptorObservationTensors = []
         acceptorNetOfferIDs = []
         for i in range(self.world.numberOfCores):
-            # (i + 1) is the core ID
+            # (i + 1) ist die Kern-ID
             observationTensor, correspondingOfferIDs = self.getAcceptorObservationTensorAndIDs(i + 1)
             acceptorObservationTensors.append(observationTensor)
             acceptorNetOfferIDs.append(correspondingOfferIDs)
         
         offerObservationTensors = []
         for i in range(self.world.collectionLength):
-            # i is also the queuePostion managed by this offerNet.
+            # i ist auch gleichzeitig die queuePostion, die von diesem offerNet verwaltet wird.
             observationTensor = self.getOfferNetObservationTensor(i)
             offerObservationTensors.append(observationTensor)
         
@@ -106,15 +107,15 @@ class DividedAgent(Agent):
     def getAcceptorObservationTensorAndIDs(self, coreID):
         core = self.world.cores[coreID - 1]
         ownershipFlag = True if (core.ownerID == self.agentID) else False
-        # The net reward here is really just the current priority, since the reward is at double and the other half has been ceded to the previous owner.
+        # Der Netto-Reward ist hier wirklich einfach die aktuelle Priorität, da der Reward beim doppelten liegt und die andere Hälfte ja an den vorherigen Besitzer abgetreten wurde.
         coreObservation = [{'ownershipFlag':int(ownershipFlag),'bruttoReward':(core.job.priority) if ownershipFlag else (-1), 'remainingLength': (core.job.remainingLength) if ownershipFlag else (-1)}]
         offersToThatCoreToThatAgent = [{'offerdReward': offer.offeredReward,'necessaryTime': offer.necessaryTime} for offer in self.world.offers if (offer.recipientID == self.agentID)&(offer.coreID==coreID)]
-        #-2 is simply the default value chosen here for non-existent offers to scale the observation to a fixed length.
+        #-2 ist einfach der hier gewählte Default-Wert für nicht existente Angebote, um die Beobachtung auf eine fixe Länge zu skalieren.
         #world.maxAmountOfOffersToOneAgent = (world.numberOfAgents - 1) * world.collectionLength
         offersToThatCoreToThatAgent = pad(offersToThatCoreToThatAgent, self.world.maxAmountOfOffersToOneAgent,{'priority': -2,'necessaryTime': -2})
         correspondingOfferIDs = [offer.offerID for offer in self.world.offers if (offer.recipientID == self.agentID)&(offer.coreID==coreID)]
         correspondingOfferIDs = pad(correspondingOfferIDs,self.world.maxAmountOfOffersToOneAgent,-2)
-        #These offerIDs will become important later, since the acceptance network selects an offer for acceptance by index action.
+        #Diese offerIDs werden später noch wichtig, da das Akzeptiernetz ja per Index-Aktion ein Angebot zur Annahme auswählt.
         observationDict = coreObservation + offersToThatCoreToThatAgent
         observationTensor = torch.tensor(np.concatenate((np.array([list(coreObs.values()) for coreObs in coreObservation]).reshape(-1),np.array([list(dicti.values()) for dicti in offersToThatCoreToThatAgent]).reshape(-1))),requires_grad=False)
         
@@ -123,10 +124,10 @@ class DividedAgent(Agent):
     def getAcceptorObservationTensorAndIDs1(self, coreID):
         core = self.world.cores[coreID - 1]
         ownershipFlag = True if (core.ownerID == self.agentID) else False
-
+        # Der Netto-Reward ist hier wirklich einfach die aktuelle Priorität, da der Reward beim doppelten liegt und die andere Hälfte ja an den vorherigen Besitzer abgetreten wurde.
         coreObservation = [{'ownershipFlag':int(ownershipFlag),'bruttoReward':(core.job.priority) if ownershipFlag else (-1), 'remainingLength': (core.job.remainingLength) if ownershipFlag else (-1)}]
         offersToThatCoreToThatAgent = [{'offerdReward': offer.offeredReward,'necessaryTime': offer.necessaryTime} for offer in self.world.offers if (offer.recipientID == self.agentID)&(offer.coreID==coreID)]
-
+        #-2 ist einfach der hier gewählte Default-Wert für nicht existente Angebote, um die Beobachtung auf eine fixe Länge zu skalieren.
         #world.maxAmountOfOffersToOneAgent = (world.numberOfAgents - 1) * world.collectionLength
         offersToThatCoreToThatAgent = pad(offersToThatCoreToThatAgent, self.world.maxAmountOfOffersToOneAgent,{'priority': -2,'necessaryTime': -2})
         correspondingOfferIDs = [offer.offerID for offer in self.world.offers if (offer.recipientID == self.agentID)&(offer.coreID==coreID)]
@@ -206,7 +207,7 @@ class AggregatedFixPricePPOAgent(AggregatedAgent):
         aggregatedAcceptorAction = self.policy['AcceptorUnit'].selectAction(acceptorObservations)
         aggregatedOfferAction = self.policy['OfferUnit'].selectAction(offerObservations)
 
-        #The function transforms the number representing an aggregated action back into the individual actions that can be processed by the system.
+        #Die Funktion verwandelt die Zahl, die für eine aggregierte Handlung steht, zurück in die für das System verarbeitbaren Einzelhandlungen.
         nd_aggregatedAcceptorAction = numberToNDimensionalAction(aggregatedAcceptorAction,(self.world.maxAmountOfOffersToOneAgent + 1),self.world.numberOfCores)
         nd_aggregatedOfferAction = numberToNDimensionalAction(aggregatedOfferAction,(self.world.numberOfCores + 1),self.world.collectionLength)
 
@@ -232,15 +233,15 @@ class FullyAggregatedFixPricePPOAgent(Agent):
         offerIDsAccumulator = []
         for core in self.world.cores:
             ownershipFlag = True if (core.ownerID == self.agentID) else False
-
+            # Der Netto-Reward ist hier wirklich einfach die aktuelle Priorität, da der Reward beim doppelten liegt und die andere Hälfte ja an den vorherigen Besitzer abgetreten wurde.
             coreObservation = [{'ownershipFlag':int(ownershipFlag) , 'bruttoReward':(core.job.priority) if ownershipFlag else (-1), 'remainingLength': (core.job.remainingLength) if ownershipFlag else (-1)}]
             offersToThatCoreToThatAgent = [{'offerdReward': offer.offeredReward,'necessaryTime': offer.necessaryTime} for offer in self.world.offers if (offer.recipientID == self.agentID)&(offer.coreID==core.coreID)]
-            
+            #-2 ist einfach der hier gewählte Default-Wert für nicht existente Angebote, um die Beobachtung auf eine fixe Länge zu skalieren.
             #world.maxAmountOfOffersToOneAgent = (world.numberOfAgents - 1) * world.collectionLength
             offersToThatCoreToThatAgent = pad(offersToThatCoreToThatAgent, self.world.maxAmountOfOffersToOneAgent,{'priority': -2,'necessaryTime': -2})
             correspondingOfferIDs = [offer.offerID for offer in self.world.offers if (offer.recipientID == self.agentID)&(offer.coreID==core.coreID)]
             correspondingOfferIDs = pad(correspondingOfferIDs,self.world.maxAmountOfOffersToOneAgent,-2)
-
+            #Diese offerIDs werden später noch wichtig, da das Akzeptiernetz ja per Index-Aktion ein Angebot zur Annahme auswählt.
             observationTensor = torch.tensor(np.concatenate((np.array([list(coreObs.values()) for coreObs in coreObservation]).reshape(-1),np.array([list(dicti.values()) for dicti in offersToThatCoreToThatAgent]).reshape(-1))),requires_grad=False)
             acceptorObservationAccumulator = torch.cat((acceptorObservationAccumulator,observationTensor),0)
             offerIDsAccumulator.append(correspondingOfferIDs)
@@ -257,12 +258,12 @@ class FullyAggregatedFixPricePPOAgent(Agent):
     def getActions(self,offerObservations,acceptorObservations):
         fullyAggregatedObservation = torch.cat((offerObservations,acceptorObservations))
         fullyAggregatedAction = self.policy['FullyAggregatedUnit'].selectAction(fullyAggregatedObservation)
-        #The fully-aggregated plot lies in a rectangle whose sides denote the acceptor plot and the offer plot#
+        #Die voll-aggregierte Handlung liegt in einem Rechteck, dessen Seiten die Akzeptor-Handlung und der Angebots-Handlung bezeichnen#
         divisor = (self.world.numberOfCores + 1)**self.world.collectionLength
-        f_A_acceptorAction = fullyAggregatedAction // divisor   #By modulo(%) and residueless division(//) the row and column of the plot in the rectangle are determined.
+        f_A_acceptorAction = fullyAggregatedAction // divisor   #Durch modulo(%) und restlose Division(//) werden Zeile und Spalte der Handlung im Rechteck bestimmt.
         f_A_offerAction = fullyAggregatedAction % divisor
 
-        #The function transforms the number representing an aggregated action back into the individual actions that can be processed by the system.
+        #Die Funktion verwandelt die Zahl, die für eine aggregierte Handlung steht, zurück in die für das System verarbeitbaren Einzelhandlungen.
         nd_aggregatedAcceptorAction = numberToNDimensionalAction(f_A_acceptorAction,(self.world.maxAmountOfOffersToOneAgent + 1),self.world.numberOfCores)
         nd_aggregatedOfferAction = numberToNDimensionalAction(f_A_offerAction,(self.world.numberOfCores + 1),self.world.collectionLength)
 
@@ -272,7 +273,7 @@ class FullyAggregatedFixPricePPOAgent(Agent):
         self.policy['FullyAggregatedUnit'].update()
     
     def saveRewards(self, fullyAggregatedReward):
-        #works with the semi-aggregated rewards
+        #arbeitet mit den halb-aggregierten Rewards
         self.policy['FullyAggregatedUnit'].buffer.rewards.append(fullyAggregatedReward)
 
 class DividedFixedPricePPOAgent(DividedAgent):
@@ -358,7 +359,7 @@ class DividedFreePricePPOAgent(DividedAgent):
         offerNetActions = []
         for i, offerNetObservation in enumerate(offerNetObservationTensors):
             action = self.policy['OfferNets'][i].selectAction(offerNetObservation)
-            # Tuples are appended here.
+            # Hier werden Tupel angehängt.
             offerNetActions.append(action)
         
         acceptorNetActions = []
@@ -376,7 +377,7 @@ class DividedFreePricePPOAgent(DividedAgent):
             offerNet.update()
     
     def saveRewards(self,coreChooserRewards,priceChooserRewards,acceptorNetRewards):
-        
+        #Vielleicht irgendwann noch einmal überprüfen, ob hier alles sauber abläuft bzw der Formate und Reihenfolgen.
         for i,reward in enumerate(coreChooserRewards):
             self.policy['OfferNets'][i].coreChooser.buffer.rewards.append(reward[0])
         
@@ -408,10 +409,10 @@ class DividedHardcodedAgent(DividedAgent):
 
 def numberToNDimensionalAction(number,base,dimensionality):
     '''
-    The values of the actions in each dimension range from 0 - (base - 1).
-    The number (the input) starts at 0 and ends at (base**dimensionality - 1).
-    In this way, a non-negative integer (the input) can be translated into a multidimensional
-    plot consisting of array indices.
+    Die Werte der Handlungen in den einzelnen Dimensionen reichen von 0 - (base - 1).
+    Die Nummer (die Eingabe) beginnt bei 0 und endet bei (base**dimensionality - 1).
+    Auf diese Weise kann eine nicht-negative Ganzzahl (die Eingabe) in eine mehrdimensionale
+    Handlung übersetzt werden, die aus Array-Indizes besteht.
     '''
     if ((number < 0)|(number >= base **dimensionality)):
         raise ValueError("Illegal Argument")
