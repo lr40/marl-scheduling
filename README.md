@@ -44,7 +44,7 @@ In the non-commercial case, the reward equals the priority of the the facilitate
 ## Used code templates
 The implementation of the reinforcement learning algorithms was based on freely available code templates, which should not go unmentioned: The implementation of the PPO algorithm was originally taken from [PPO](https://github.com/nikhilbarhate99/PPO-PyTorch "PPO-Pytorch implementation") and adapted to the requirements of the project. The implementation of the [DQN](https://github.com/pytorch/tutorials/blob/master/intermediate\_source/reinforcement\_q\_learning.py "DQN-Pytorch implementation") algorithm was also based on a public repository template and adapted to the project.
 
-## Explanation to hyperparameters
+## Explanation of hyperparameters
 <em>num\_episodes</em> specifies the number of episodes.<br>
 <em>episodeLength</em> specifies the episode length in time increments.<br>
 <em>newJobsPerRoundPerAgent</em> specifies how many new jobs will be generated in an agent's job collection at the beginning of a time step, provided that there is free space in the collection, taking into account any currently running jobs that still need to be deferred. Jobs are thus replenished when the job collection cannot overflow.<br>
