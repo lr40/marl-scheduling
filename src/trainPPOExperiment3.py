@@ -18,9 +18,9 @@ original_stdout = sys.stdout
 
 # Setup of this run
 PLOTTING = False
-fileName = "data/Experiment 3/halb-aggregiert/data{}.pkl"
-plotName = "PPO Training"
-plotPath = path = "C:\\Users\\lenna\\Desktop\\Ausgabe\\" + plotName + " {}.png"
+fileName = "data{}.pkl"
+plotName = 'PPO Training'
+plotPath = path = '' #enter a path
 renderingFileName = "TrainingOutput.txt"
 comment = "Experiment 3., aufgeteilt, Handlungslogging, 8 Kerne"
 print(comment)

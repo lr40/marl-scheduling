@@ -19,9 +19,9 @@ original_stdout = sys.stdout
 
 # Setup of this run
 PLOTTING = False
-fileName = "data/Experiment 4/n_commRew/data{}.pkl"
-plotName = "PPO Training"
-plotPath = path = "C:\\Users\\lenna\\Desktop\\Ausgabe\\" + plotName + " {}.png"
+fileName = "data{}.pkl"
+plotName = 'PPO Training'
+plotPath = path = '' #enter a path
 renderingFileName = "TrainingOutput.txt"
 comment = "Experiment 4.,6 Jobs, freie Preise, n_commercial Reward"
 print(comment)
