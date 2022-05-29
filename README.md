@@ -4,8 +4,7 @@
 
 To train agents in the domain, run an arbitrary train*.py script in the src folder. You can customize the parameters explained below.
 
-## Scenario parameters
-
+## Environment parameters
 
 | Parameter                 | type    | Description                                                                                                                                           |
 | :-------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -19,15 +18,13 @@ To train agents in the domain, run an arbitrary train*.py script in the src fold
 | newJobsPerRoundPerAgent   | Int     | if one agent has capacity for new jobs in his job collection: how many new jobs are generated at the beginning of each round                          |
 | freePrices                | Bool    | specifies if free prices are used                                                                                                                     |
 | commercialFreePriceReward | Bool    | specifies in case of free prices if the commercial or non-commercial reward function is used                                                          |
-| dividedAgents             | Bool    | specifies if all the agents are of the distributed architecture                                                                                       |
+| dividedAgents             | Bool    | specifies if all the agents are of the distributed architecture. The difference in the name is due to a later name change.                            |
 | aggregatedAgents          | Bool    | specifies if all the agents are of the semi-aggregated architecture                                                                                   |
 | fullyAggregatedAgents     | Bool    | specifies if all the agents are of the fully aggregated architecture                                                                                  |
 | locallySharedParameters   | Bool    | specifies if all the agents are of the distributed architecture with agent-wise parameter sharing                                                     |
 | globallySharedParameters  | Bool    | specifies if all the agents in the domain are of the distributed architecture with global parameter sharing, i.e. all the agents share one neural net |
 
-
 ## PPO hyperparameters
-
 
 | Parameter              | type  | Description                                                                                                                             |
 | ------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,7 +37,94 @@ To train agents in the domain, run an arbitrary train*.py script in the src fold
 | CENTRALISATION\_SAMPLE | Int   | specifies, for parameter sharing, how many randomly selected subunit memories are included for a training run                           |
 | EPS_CLIP               | Float | specifies the value of the clipping parameter needed for PPO                                                                            |
 | UPDATE\_STEP           | Int   | specifies after how many time steps the neural networks are trained with the transitions experienced during this period                 |
+| NUM_NEURONS            | Int   | specifies the amount of neurons per hidden layer of one neural network                                                                  |
 
+## Parameters of the experiments
+
+The section 'The effect of intra-agent trading' uses the same hyperparameters as the section 'Agent architecture and scheduling performance'.
+
+### Section: Agent architecture and scheduling performance
+
+| Parameter               | 2 agents  | 4 agents  |
+| ------------------------- | ----------- | :---------- |
+| freePrices              | False     | False     |
+| num_episodes            | 6000      | 6000      |
+| episodeLength           | 100       | 100       |
+| numberOfAgents          | 2         | 4         |
+| numberOfCores           | 2         | 4         |
+| newJobsPerRoundPerAgent | 1         | 1         |
+| collectionLength        | 3         | 3         |
+| possibleJobPriorities   | [3,10]    | [3,10]    |
+| possibleJobLengths      | [6,3]     | [6,3]     |
+| fixPricesList           | [2,7]     | [2,7]     |
+| probabilities           | [0.8,0.2] | [0.8,0.2] |
+
+| Parameter             | distributed | semi-aggregated | fully aggregated | distributed + local parameter sharing (2 agents) | distributed + local parameter sharing (4 agents) |
+| ----------------------- | ------------- | ----------------- | ------------------ | -------------------------------------------------- | -------------------------------------------------- |
+| LR_ACTOR              | 0.003       | 0.003           | 0.003            | 0.003                                            | 0.003                                            |
+| LR_CRITIC             | 0.01        | 0.01            | 0.01             | 0.01                                             | 0.01                                             |
+| ACCEPTOR_GAMMA        | 0.8733      | 0.8733          | 0.8733           | 0.8733                                           | 0.8733                                           |
+| OFFER_GAMMA           | 0.5         | 0.5             | 0.5              | 0.5                                              | 0.5                                              |
+| ACCEPTOR_K_EPOCHS     | 7           | 2               | 2                | 2                                                | 1                                                |
+| OFFER_K_EPOCHS        | 7           | 2               | 2                | 1                                                | 1                                                |
+| EPS_CLIP              | 0.2         | 0.2             | 0.2              | 0.2                                              | 0.2                                              |
+| UPDATE_STEP           | 200         | 200             | 200              | 200                                              | 200                                              |
+| NUM_NEURONS           | 16          | 32              | 64               | 16                                               | 16                                               |
+| CENTRALISATION_SAMPLE | /           | /               | /                | 2                                                | 2                                                |
+
+### Section: Price level and scarcity
+
+| Parameter               | 2 cores | 4 cores |
+| ------------------------- | --------- | :-------- |
+| freePrices              | True    | True    |
+| num_episodes            | 4000    | 4000    |
+| episodeLength           | 100     | 100     |
+| numberOfAgents          | 2       | 2       |
+| numberOfCores           | 2       | 4       |
+| newJobsPerRoundPerAgent | 1       | 1       |
+| collectionLength        | 3       | 3       |
+| possibleJobPriorities   | [5]     | [5]     |
+| possibleJobLengths      | [5]     | [5]     |
+| probabilities           | [1]     | [1]     |
+
+| Parameter         | distributed with price setter network |
+| ------------------- | --------------------------------------- |
+| LR_ACTOR          | 0.003                                 |
+| LR_CRITIC         | 0.01                                  |
+| ACCEPTOR_GAMMA    | 0.95                                  |
+| OFFER_GAMMA       | 0.5                                   |
+| ACCEPTOR_K_EPOCHS | 2                                     |
+| OFFER_K_EPOCHS    | 2                                     |
+| EPS_CLIP          | 0.2                                   |
+| UPDATE_STEP       | 200                                   |
+| NUM_NEURONS       | 16                                    |
+
+### Section: Price level and scheduling
+
+| Parameter               | value               |
+| ------------------------- | :-------------------- |
+| freePrices              | True                |
+| num_episodes            | 4000                |
+| episodeLength           | 100                 |
+| numberOfAgents          | 2                   |
+| numberOfCores           | 3                   |
+| newJobsPerRoundPerAgent | 1                   |
+| collectionLength        | 3                   |
+| possibleJobPriorities   | [2,4,8]             |
+| possibleJobLengths      | [5,5,5]             |
+| probabilities           | [(1/3),(1/3),(1/3)] |
+
+| Parameter        | distributed with price setter network |
+| ------------------ | --------------------------------------- |
+| LR_ACTOR         | 0.003                                 |
+| LR_CRITIC        | 0.01                                  |
+| ACCEPTOR_GAMMA   | 0.95                                  |
+| OFFER_GAMMA      | 0.5                                   |
+| ACCEPTOR_K_EPOCH | 2                                     |
+| OFFER_K_EPOCH    | 2                                     |
+| EPS_CLIP         | 0.2                                   |
+| UPDATE_STEP      | 200                                   |
+| NUM_NEURONS      | 16                                    |
 
 ## Used code templates
 
