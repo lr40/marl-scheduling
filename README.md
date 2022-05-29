@@ -26,18 +26,19 @@ To train agents in the domain, run an arbitrary train*.py script in the src fold
 
 ## PPO hyperparameters
 
-| Parameter              | type  | Description                                                                                                                             |
-| ------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| IS_PPO                 | Bool  | specifies if PPO is used                                                                                                                |
-| LR_ACTOR               | Float | initial learning rate of the actor network                                                                                              |
-| LR_CRITIC              | Float | initial learning rate of the critic network                                                                                             |
-| ACCEPTOR_GAMMA         | Float | the discount factor of future rewards for the acceptor unit                                                                             |
-| OFFER_GAMMA            | Float | the discount factor of future rewards for the offer unit                                                                                |
-| RAW_K\_EPOCHS          | Int   | used to determine the number of iterations with which the acceptor and offer units' memories are used to optimize their neural networks |
-| CENTRALISATION\_SAMPLE | Int   | specifies, for parameter sharing, how many randomly selected subunit memories are included for a training run                           |
-| EPS_CLIP               | Float | specifies the value of the clipping parameter needed for PPO                                                                            |
-| UPDATE\_STEP           | Int   | specifies after how many time steps the neural networks are trained with the transitions experienced during this period                 |
-| NUM_NEURONS            | Int   | specifies the amount of neurons per hidden layer of one neural network                                                                  |
+| Parameter                             | type  | Description                                                                                                                             |
+| --------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| IS_PPO                                | Bool  | specifies if PPO is used                                                                                                                |
+| LR_ACTOR                              | Float | initial learning rate of the actor network                                                                                              |
+| LR_CRITIC                             | Float | initial learning rate of the critic network                                                                                             |
+| ACCEPTOR_GAMMA                        | Float | the discount factor of future rewards for the acceptor unit                                                                             |
+| OFFER_GAMMA                           | Float | the discount factor of future rewards for the offer unit                                                                                |
+| RAW_K\_EPOCHS                         | Int   | used to determine the number of iterations with which the acceptor and offer units' memories are used to optimize their neural networks |
+| ACCEPTOR_K_EPOCHS<br />OFFER_K_EPOCHS | Int   | not specified directly but derived from RAW_K_EPOCHS                                                                                    |
+| CENTRALISATION\_SAMPLE                | Int   | specifies, for parameter sharing, how many randomly selected subunit memories are included for a training run                           |
+| EPS_CLIP                              | Float | specifies the value of the clipping parameter needed for PPO                                                                            |
+| UPDATE\_STEP                          | Int   | specifies after how many time steps the neural networks are trained with the transitions experienced during this period                 |
+| NUM_NEURONS                           | Int   | specifies the amount of neurons per hidden layer of one neural network                                                                  |
 
 ## Parameters of the experiments
 
@@ -65,8 +66,8 @@ The section 'The effect of intra-agent trading' uses the same hyperparameters as
 | LR_CRITIC             | 0.01        | 0.01            | 0.01             | 0.01                                             | 0.01                                             |
 | ACCEPTOR_GAMMA        | 0.8733      | 0.8733          | 0.8733           | 0.8733                                           | 0.8733                                           |
 | OFFER_GAMMA           | 0.5         | 0.5             | 0.5              | 0.5                                              | 0.5                                              |
-| ACCEPTOR_K_EPOCHS     | 3           | 2               | 2                | 2                                                | 1                                                |
-| OFFER_K_EPOCHS        | 3           | 2               | 2                | 1                                                | 1                                                |
+| ACCEPTOR_K_EPOCHS     | 3           | 3               | 3                | 2                                                | 1                                                |
+| OFFER_K_EPOCHS        | 3           | 3               | 3                | 1                                                | 1                                                |
 | EPS_CLIP              | 0.2         | 0.2             | 0.2              | 0.2                                              | 0.2                                              |
 | UPDATE_STEP           | 200         | 200             | 200              | 200                                              | 200                                              |
 | NUM_NEURONS           | 16          | 32              | 64               | 16                                               | 16                                               |
