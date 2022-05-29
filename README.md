@@ -65,8 +65,8 @@ The section 'The effect of intra-agent trading' uses the same hyperparameters as
 | LR_CRITIC             | 0.01        | 0.01            | 0.01             | 0.01                                             | 0.01                                             |
 | ACCEPTOR_GAMMA        | 0.8733      | 0.8733          | 0.8733           | 0.8733                                           | 0.8733                                           |
 | OFFER_GAMMA           | 0.5         | 0.5             | 0.5              | 0.5                                              | 0.5                                              |
-| ACCEPTOR_K_EPOCHS     | 7           | 2               | 2                | 2                                                | 1                                                |
-| OFFER_K_EPOCHS        | 7           | 2               | 2                | 1                                                | 1                                                |
+| ACCEPTOR_K_EPOCHS     | 3           | 2               | 2                | 2                                                | 1                                                |
+| OFFER_K_EPOCHS        | 3           | 2               | 2                | 1                                                | 1                                                |
 | EPS_CLIP              | 0.2         | 0.2             | 0.2              | 0.2                                              | 0.2                                              |
 | UPDATE_STEP           | 200         | 200             | 200              | 200                                              | 200                                              |
 | NUM_NEURONS           | 16          | 32              | 64               | 16                                               | 16                                               |
